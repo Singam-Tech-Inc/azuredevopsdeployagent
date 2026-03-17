@@ -1,0 +1,17 @@
+services:
+  azdevops-agent:
+    build:
+      context: .
+      args:
+        TARGETARCH: ${TARGETARCH}
+    image: ${IMAGE_REPO:-azdevopsdeploymentagent}:${VERSION}-${TARGETARCH}
+    container_name: azdevops-agent
+    restart: always
+    volumes:
+      - deploymentdevagent:/azagent
+    env_file:
+      - ./prod.env
+
+volumes:
+  deploymentdevagent:
+    external: true
