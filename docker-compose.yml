@@ -1,0 +1,28 @@
+services:
+  azdevops-agent:
+    build:
+      context: .
+      args:
+        TARGETARCH: ${TARGETARCH}
+    image: ${IMAGE_REPO:-azdevopsdeploymentagent}:${VERSION}-${TARGETARCH}
+    container_name: azdevops-agent
+    restart: always
+    volumes:
+      - deploymentdevagent:/azagent
+    environment:
+      - AZP_URL=${AZP_URL}
+      - AZP_TOKEN=${AZP_TOKEN}
+      - AZP_PROJECT=${AZP_PROJECT}
+      - AZP_ENVIRONMENT=${AZP_ENVIRONMENT:-development}
+      - AZP_AGENT_NAME=${AZP_AGENT_NAME:-agent}
+    networks:
+      - agent_network
+
+volumes:
+  deploymentdevagent:
+    external: true
+
+networks:
+  agent_network:
+    external: true
+    name: ${NETWORK_NAME:-deployagent_default}
