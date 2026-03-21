@@ -9,9 +9,20 @@ services:
     restart: always
     volumes:
       - deploymentdevagent:/azagent
-    env_file:
-      - ./prod.env
+    environment:
+      - AZP_URL=${AZP_URL}
+      - AZP_TOKEN=${AZP_TOKEN}
+      - AZP_PROJECT=${AZP_PROJECT}
+      - AZP_ENVIRONMENT=${AZP_ENVIRONMENT:-development}
+      - AZP_AGENT_NAME=${AZP_AGENT_NAME:-agent}
+    networks:
+      - agent_network
 
 volumes:
   deploymentdevagent:
     external: true
+
+networks:
+  agent_network:
+    external: true
+    name: ${NETWORK_NAME:-deployagent_default}
