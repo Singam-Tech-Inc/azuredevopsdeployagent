@@ -34,7 +34,7 @@ if [ ! -f ".agent" ]; then
     --replace \
     --environment \
     --environmentname '${AZP_ENVIRONMENT}' \
-    --acceptteeeula \
+    --acceptTeeEula \
     --agent '${AZP_AGENT_NAME}' \
     --url '${AZP_URL}' \
     --work _work \
