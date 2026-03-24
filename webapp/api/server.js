@@ -13,6 +13,14 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'api',
+    endpoints: ['/', '/health', '/api/items'],
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() });
 });

@@ -19,7 +19,10 @@ services:
 
   frontend:
     build:
-      context: ./webapp/frontend
+      context: .
+      dockerfile: ./webapp/Dockerfile
+      args:
+        APP_DIR: webapp/frontend
     image: sample-frontend:latest
     container_name: frontend
     restart: always
@@ -35,7 +38,10 @@ services:
 
   api:
     build:
-      context: ./webapp/api
+      context: .
+      dockerfile: ./webapp/Dockerfile
+      args:
+        APP_DIR: webapp/api
     image: sample-api:latest
     container_name: api
     restart: always
@@ -49,7 +55,10 @@ services:
 
   dashboard:
     build:
-      context: ./webapp/dashboard
+      context: .
+      dockerfile: ./webapp/Dockerfile
+      args:
+        APP_DIR: webapp/dashboard
     image: sample-dashboard:latest
     container_name: dashboard
     restart: always
