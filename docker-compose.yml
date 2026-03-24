@@ -1,4 +1,68 @@
 services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    user: "0:0"
+    restart: always
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - agent_network
+
+  frontend:
+    build:
+      context: ./webapp/frontend
+    image: sample-frontend:latest
+    container_name: frontend
+    restart: always
+    environment:
+      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN:-app.localhost}`) || Host(`www.${APP_DOMAIN:-app.localhost}`)
+      - traefik.http.routers.frontend.entrypoints=web
+      - traefik.http.services.frontend.loadbalancer.server.port=3000
+    networks:
+      - agent_network
+
+  api:
+    build:
+      context: ./webapp/api
+    image: sample-api:latest
+    container_name: api
+    restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`api.${APP_DOMAIN:-app.localhost}`)
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=4000
+    networks:
+      - agent_network
+
+  dashboard:
+    build:
+      context: ./webapp/dashboard
+    image: sample-dashboard:latest
+    container_name: dashboard
+    restart: always
+    environment:
+      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`dashboard.${APP_DOMAIN:-app.localhost}`)
+      - traefik.http.routers.dashboard.entrypoints=web
+      - traefik.http.services.dashboard.loadbalancer.server.port=5000
+    networks:
+      - agent_network
+
   azdevops-agent:
     build:
       context: .
@@ -26,3 +90,4 @@ networks:
   agent_network:
     external: true
     name: ${NETWORK_NAME:-deployagent_default}
+
