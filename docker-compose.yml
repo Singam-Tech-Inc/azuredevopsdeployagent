@@ -7,6 +7,8 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --providers.file.directory=/etc/traefik/conf   # watches traefik/conf/ for dynamic config
+      - --providers.file.watch=true                    # hot-reload on file changes (no restart needed)
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
     ports:
@@ -14,6 +16,7 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/conf:/etc/traefik/conf:ro            # canary/weighted routing config
     networks:
       - agent_network
 
@@ -24,15 +27,47 @@ services:
       args:
         APP_DIR: webapp/frontend
     image: sample-frontend:latest
-    container_name: frontend
+    # container_name intentionally omitted — allows: docker compose up -d --scale frontend=3
     restart: always
     environment:
       - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - APP_VERSION=stable
     labels:
       - traefik.enable=true
-      - traefik.http.routers.frontend.rule=Host(`${APP_DOMAIN:-app.localhost}`) || Host(`www.${APP_DOMAIN:-app.localhost}`)
-      - traefik.http.routers.frontend.entrypoints=web
+      # Router rule is defined in traefik/conf/dynamic.yml (weighted canary setup)
       - traefik.http.services.frontend.loadbalancer.server.port=3000
+      - traefik.http.services.frontend.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.frontend.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.frontend.loadbalancer.healthcheck.timeout=3s
+    networks:
+      - agent_network
+
+  # ---------------------------------------------------------------------------
+  # Canary service — receives a configurable % of frontend traffic.
+  # Start with:  docker compose build frontend-canary && docker compose up -d frontend-canary
+  # Then edit traefik/conf/dynamic.yml weights; Traefik hot-reloads the change.
+  # Scale down with: docker compose stop frontend-canary
+  #   In production, point image to a pre-built v2 tag instead of rebuilding here.
+  # ---------------------------------------------------------------------------
+  frontend-canary:
+    build:
+      context: .
+      dockerfile: ./webapp/Dockerfile
+      args:
+        APP_DIR: webapp/frontend
+    image: sample-frontend-canary:latest
+    # container_name omitted — allows: docker compose up -d --scale frontend-canary=2
+    restart: always
+    environment:
+      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - APP_VERSION=canary
+    labels:
+      - traefik.enable=true
+      # No router label — traffic reaches this service only via frontend-weighted in dynamic.yml
+      - traefik.http.services.frontend-canary.loadbalancer.server.port=3000
+      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.timeout=3s
     networks:
       - agent_network
 

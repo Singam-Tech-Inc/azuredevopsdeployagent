@@ -1,0 +1,60 @@
+# ===========================================================================
+# Traefik Dynamic Configuration — Weighted Canary / Load-Balanced Routing
+# ===========================================================================
+# This file hot-reloads automatically (--providers.file.watch=true).
+# Edit weights in-place to shift traffic with zero downtime / no restarts.
+#
+# Update the Host() rules below if APP_DOMAIN is not "app.localhost".
+#
+# Traffic weight semantics:
+#   weight: 0  — no traffic routed (safe to have backend stopped)
+#   weight: 1  — proportional share (1:9 ratio with stable = 10% canary)
+#   weight: 10 — full share (use to fully promote canary)
+#
+# ---------------------------------------------------------------------------
+# Canary Deployment Workflow
+# ---------------------------------------------------------------------------
+# 1. Scale stable instances:
+#      docker compose up -d --scale frontend=3
+#
+# 2. Build & start canary (new image/version):
+#      docker compose build frontend-canary
+#      docker compose up -d frontend-canary
+#
+# 3. Route 10% to canary — edit weights below:
+#      frontend:        weight: 9
+#      frontend-canary: weight: 1
+#    (file hot-reloads; no restart needed)
+#
+# 4. Monitor. Gradually increase canary share (5/5, then 0/10).
+#
+# 5. Promote canary fully — set:
+#      frontend:        weight: 0
+#      frontend-canary: weight: 10
+#
+# 6. After validation, rebuild stable with new image, then scale down canary:
+#      docker compose stop frontend-canary
+#    Reset weights back to: frontend: 10, frontend-canary: 0
+#    Rebuild stable: docker compose build frontend && docker compose up -d --scale frontend=3
+# ---------------------------------------------------------------------------
+
+http:
+  routers:
+    frontend:
+      rule: "Host(`app.localhost`) || Host(`www.app.localhost`) || Host(`localhost`) || Host(`127.0.0.1`)"
+      entryPoints:
+        - web
+      service: frontend-weighted
+
+  services:
+    # -------------------------------------------------------------------------
+    # Weighted entry point — controls traffic split between stable and canary.
+    # Traefik auto-round-robins within each service across all running replicas.
+    # -------------------------------------------------------------------------
+    frontend-weighted:
+      weighted:
+        services:
+          - name: frontend@docker          # stable: all replicas load-balanced equally
+            weight: 9                     # 100% initially; reduce when canary is live
+          - name: frontend-canary@docker   # canary: receives weight/(stable+canary) % traffic
+            weight: 1                      # 0 = disabled; set to 1 for ~10%, 5 for ~50%, etc.
