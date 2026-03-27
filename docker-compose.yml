@@ -46,9 +46,9 @@ services:
 
   # ---------------------------------------------------------------------------
   # Canary service — receives a configurable % of frontend traffic.
-  # Start with:  docker compose build frontend-canary && docker compose up -d frontend-canary
+  # Start with:  docker compose build app1-canary && docker compose up -d app1-canary
   # Then edit traefik/conf/dynamic.yml weights; Traefik hot-reloads the change.
-  # Scale down with: docker compose stop frontend-canary
+  # Scale down with: docker compose stop app1-canary
   #   In production, point image to a pre-built v2 tag instead of rebuilding here.
   # ---------------------------------------------------------------------------
   app1-canary:
