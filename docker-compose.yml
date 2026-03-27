@@ -12,33 +12,35 @@ services:
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
     ports:
-      - "80:80"
-      - "443:443"
+      - "3000:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik/conf:/etc/traefik/conf:ro            # canary/weighted routing config
     networks:
       - agent_network
 
-  frontend:
+  app1:
     build:
       context: .
       dockerfile: ./webapp/Dockerfile
       args:
         APP_DIR: webapp/frontend
     image: sample-frontend:latest
-    # container_name intentionally omitted — allows: docker compose up -d --scale frontend=3
+    # container_name intentionally omitted — allows: docker compose up -d --scale app1=3
     restart: always
     environment:
-      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - API_URL=/app2
       - APP_VERSION=stable
+      - APP_RELEASE=v1
+      - FEATURE_BANNER=false
+      - BASE_PATH=/app1
     labels:
       - traefik.enable=true
       # Router rule is defined in traefik/conf/dynamic.yml (weighted canary setup)
-      - traefik.http.services.frontend.loadbalancer.server.port=3000
-      - traefik.http.services.frontend.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.frontend.loadbalancer.healthcheck.interval=10s
-      - traefik.http.services.frontend.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.app1.loadbalancer.server.port=3000
+      - traefik.http.services.app1.loadbalancer.healthcheck.path=/app1/health
+      - traefik.http.services.app1.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.app1.loadbalancer.healthcheck.timeout=3s
     networks:
       - agent_network
 
@@ -49,61 +51,67 @@ services:
   # Scale down with: docker compose stop frontend-canary
   #   In production, point image to a pre-built v2 tag instead of rebuilding here.
   # ---------------------------------------------------------------------------
-  frontend-canary:
+  app1-canary:
     build:
       context: .
       dockerfile: ./webapp/Dockerfile
       args:
         APP_DIR: webapp/frontend
     image: sample-frontend-canary:latest
-    # container_name omitted — allows: docker compose up -d --scale frontend-canary=2
+    # container_name omitted — allows: docker compose up -d --scale app1-canary=2
     restart: always
     environment:
-      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - API_URL=/app2
       - APP_VERSION=canary
+      - APP_RELEASE=v2
+      - FEATURE_BANNER=true
+      - BASE_PATH=/app1
     labels:
       - traefik.enable=true
-      # No router label — traffic reaches this service only via frontend-weighted in dynamic.yml
-      - traefik.http.services.frontend-canary.loadbalancer.server.port=3000
-      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.interval=10s
-      - traefik.http.services.frontend-canary.loadbalancer.healthcheck.timeout=3s
+      # No router label — traffic reaches this service only via app1-weighted in dynamic.yml
+      - traefik.http.services.app1-canary.loadbalancer.server.port=3000
+      - traefik.http.services.app1-canary.loadbalancer.healthcheck.path=/app1/health
+      - traefik.http.services.app1-canary.loadbalancer.healthcheck.interval=10s
+      - traefik.http.services.app1-canary.loadbalancer.healthcheck.timeout=3s
     networks:
       - agent_network
 
-  api:
+  app2:
     build:
       context: .
       dockerfile: ./webapp/Dockerfile
       args:
         APP_DIR: webapp/api
     image: sample-api:latest
-    container_name: api
+    container_name: app2
     restart: always
+    environment:
+      - BASE_PATH=/app2
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`api.${APP_DOMAIN:-app.localhost}`)
-      - traefik.http.routers.api.entrypoints=web
-      - traefik.http.services.api.loadbalancer.server.port=4000
+      - traefik.http.routers.app2.rule=(Host(`localhost`) || Host(`127.0.0.1`)) && PathPrefix(`/app2`)
+      - traefik.http.routers.app2.entrypoints=web
+      - traefik.http.services.app2.loadbalancer.server.port=4000
     networks:
       - agent_network
 
-  dashboard:
+  app3:
     build:
       context: .
       dockerfile: ./webapp/Dockerfile
       args:
         APP_DIR: webapp/dashboard
     image: sample-dashboard:latest
-    container_name: dashboard
+    container_name: app3
     restart: always
     environment:
-      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - API_URL=/app2
+      - BASE_PATH=/app3
     labels:
       - traefik.enable=true
-      - traefik.http.routers.dashboard.rule=Host(`dashboard.${APP_DOMAIN:-app.localhost}`)
-      - traefik.http.routers.dashboard.entrypoints=web
-      - traefik.http.services.dashboard.loadbalancer.server.port=5000
+      - traefik.http.routers.app3.rule=(Host(`localhost`) || Host(`127.0.0.1`)) && PathPrefix(`/app3`)
+      - traefik.http.routers.app3.entrypoints=web
+      - traefik.http.services.app3.loadbalancer.server.port=5000
     networks:
       - agent_network
 

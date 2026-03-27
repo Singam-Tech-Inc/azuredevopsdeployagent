@@ -4,6 +4,22 @@ const express = require('express');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const BASE_PATH = normalizeBasePath(process.env.BASE_PATH || '/');
+
+function normalizeBasePath(value) {
+  if (!value || value === '/') {
+    return '';
+  }
+
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return normalized.replace(/\/+$/, '');
+}
+
+function withBasePath(pathname) {
+  return `${BASE_PATH}${pathname || '/'}` || '/';
+}
+
+const router = express.Router();
 
 app.use(express.json());
 
@@ -13,28 +29,42 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.get('/', (_req, res) => {
+router.get('/', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'api',
-    endpoints: ['/', '/health', '/api/items'],
+    service: 'app2',
+    endpoints: [withBasePath('/'), withBasePath('/health'), withBasePath('/api/items')],
   });
 });
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'api', timestamp: new Date().toISOString() });
+router.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'app2', timestamp: new Date().toISOString() });
 });
 
-app.get('/api/items', (_req, res) => {
+router.get('/api/items', (_req, res) => {
   res.json({
     items: [
       { id: 1, name: 'Azure DevOps Agent', status: 'running' },
       { id: 2, name: 'Traefik Proxy',      status: 'running' },
-      { id: 3, name: 'Frontend',           status: 'running' },
-      { id: 4, name: 'API',                status: 'running' },
+      { id: 3, name: 'App1 Frontend',      status: 'running' },
+      { id: 4, name: 'App2 API',           status: 'running' },
+      { id: 5, name: 'App3 Dashboard',     status: 'running' },
     ],
   });
 });
+
+if (BASE_PATH) {
+  app.use((req, res, next) => {
+    if (req.path === BASE_PATH) {
+      res.redirect(`${BASE_PATH}/`);
+      return;
+    }
+    next();
+  });
+  app.use(BASE_PATH, router);
+} else {
+  app.use(router);
+}
 
 app.listen(PORT, () => {
   console.log(`API running on port ${PORT}`);

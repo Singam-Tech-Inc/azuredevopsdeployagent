@@ -47,6 +47,17 @@
     }
     .status-box h3 { font-size: 0.9rem; color: #718096; margin-bottom: 6px; }
     #api-status { font-weight: 600; }
+    .muted { color: #718096; font-size: 0.9rem; margin-top: 14px; }
+    .exp-banner {
+      margin-top: 16px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #ebf8ff;
+      color: #2a4365;
+      border: 1px solid #bee3f8;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -54,6 +65,8 @@
     <h1>&#128640; Sample Web App</h1>
     <p>Routed through <strong>Traefik</strong> in Docker Compose</p>
     <span class="badge badge-green">Frontend &#10003;</span>
+    <div id="release-meta" class="muted">Release: loading...</div>
+    <div id="exp-banner" class="exp-banner" style="display:none;">v2 feature banner enabled</div>
 
     <div class="status-grid">
       <div class="status-box">
@@ -68,9 +81,22 @@
   </div>
 
   <script>
-    fetch('/config.json')
+    function setReleaseMeta(cfg) {
+      const meta = document.getElementById('release-meta');
+      meta.textContent = `Release: ${cfg.appRelease || 'n/a'} | Version: ${cfg.appVersion || 'n/a'}`;
+
+      const banner = document.getElementById('exp-banner');
+      if (cfg.featureBanner) {
+        banner.style.display = 'block';
+      }
+    }
+
+    fetch('config.json')
       .then(r => r.json())
-      .then(cfg => fetch(cfg.apiUrl + '/health'))
+      .then(cfg => {
+        setReleaseMeta(cfg);
+        return fetch(cfg.apiUrl + '/health');
+      })
       .then(r => r.json())
       .then(data => {
         const el = document.getElementById('api-status');

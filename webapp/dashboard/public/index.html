@@ -52,7 +52,7 @@
   <header>
     <h1>&#128202; Dashboard</h1>
     <span class="badge badge-green">Live</span>
-    <span class="badge" style="margin-left:auto;font-size:.7rem;" id="route-info">dashboard.app.localhost &#8594; Traefik &#8594; :5000</span>
+    <span class="badge" style="margin-left:auto;font-size:.7rem;" id="route-info">localhost:3000/app3 &#8594; Traefik &#8594; app3</span>
   </header>
 
   <div class="grid">
@@ -100,7 +100,7 @@
     setInterval(tick, 1000);
     tick();
 
-    fetch('/config.json')
+    fetch('config.json')
       .then(r => r.json())
       .then(cfg => {
         const t0 = Date.now();

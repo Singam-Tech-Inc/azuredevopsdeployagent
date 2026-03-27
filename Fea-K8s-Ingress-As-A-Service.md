@@ -89,7 +89,7 @@ http:
           - name: frontend-canary@docker   # canary: receives weight/(stable+canary) % traffic
             weight: 1                      # 0 = disabled; set to 1 for ~10%, 5 for ~50%, etc.
 ```
-## Test load balancer
+## Load test 1
 ```
 bash check_canary_split.sh app.localhost 60
 ```
@@ -106,4 +106,118 @@ Observed traffic split (60 samples):
 stable: 54 hits → 90%
 canary: 6 hits → 10%
 ```
+## Load test 2 - Test for unhealthy instance and version split
+```
+cd /Users/karthikpandian/azuredevopsdeployagent && docker pause azuredevopsdeployagent-frontend-2 && sleep 15 && bash -lc '
+stable=0; canary=0; other=0; fail=0;
+for i in {1..200}; do
+  out=$(curl -sS -D - -o /dev/null http://127.0.0.1/ 2>/dev/null || true)
+  code=$(printf "%s" "$out" | awk "/^HTTP//{print \$2; exit}")
+  ver=$(printf "%s" "$out" | awk -F": " "BEGIN{IGNORECASE=1} /^X-App-Version:/{gsub(/\r/,"",\$2); print \$2; exit}")
+  if [[ "$code" != "200" ]]; then
+    fail=$((fail+1))
+  fi
+  case "$ver" in
+    stable) stable=$((stable+1));;
+    canary) canary=$((canary+1));;
+    *) other=$((other+1));;
+  esac
+  sleep 0.02
+done
+
+echo "paused replica: azuredevopsdeployagent-frontend-2"
+echo "http_200_stable=$stable"
+echo "http_200_canary=$canary"
+echo "other_or_missing_version=$other"
+echo "non_200_or_errors=$fail"
+'
+```
+
+## Load test 3 - Test for higher sample size with 5/5 stable/canary 
+```
+cd /Users/karthikpandian/azuredevopsdeployagent && docker pause azuredevopsdeployagent-frontend-2 && sleep 15 && bash -lc '
+stable=0; canary=0; other=0; fail=0;
+for i in {1..200}; do
+  out=$(curl -sS -D - -o /dev/null http://127.0.0.1/ 2>/dev/null || true)
+  code=$(printf "%s" "$out" | awk "/^HTTP//{print \$2; exit}")
+  ver=$(printf "%s" "$out" | awk -F": " "BEGIN{IGNORECASE=1} /^X-App-Version:/{gsub(/\r/,"",\$2); print \$2; exit}")
+  if [[ "$code" != "200" ]]; then
+    fail=$((fail+1))
+  fi
+  case "$ver" in
+    stable) stable=$((stable+1));;
+    canary) canary=$((canary+1));;
+    *) other=$((other+1));;
+  esac
+  sleep 0.02
+done
+
+echo "paused replica: azuredevopsdeployagent-frontend-2"
+echo "http_200_stable=$stable"
+echo "http_200_canary=$canary"
+echo "other_or_missing_version=$other"
+echo "non_200_or_errors=$fail"
+'
+
+O/P:
+paused replica: azuredevopsdeployagent-frontend-2
+http_200_stable=180
+http_200_canary=20
+other_or_missing_version=0
+non_200_or_errors=0
+```
+```
+bash check_canary_split.sh app.localhost 500
+
+O/P:
+Sampling 500 requests against host 'app.localhost' via http://127.0.0.1/
+stable:  250
+canary:  250
+unknown: 0
+failed:  0
+observed split (successes only): sta
+```
+
+## Test - Create new version of the app and deploy
+1. File changed: server.js
+```
+app.get('/config.json', (_req, res) => {
+  res.json({
+    apiUrl: API_URL,
+    appVersion: APP_VERSION,
+    appRelease: APP_RELEASE,
+    featureBanner: FEATURE_BANNER,
+  });
+});
+```
+2. File changed : index.html
+```
+      const meta = document.getElementById('release-meta');
+      meta.textContent = `Release: ${cfg.appRelease || 'n/a'} | Version: ${cfg.appVersion || 'n/a'}`;
+
+      const banner = document.getElementById('exp-banner');
+      if (cfg.featureBanner) {
+        banner.style.display = 'block';
+      }
+```
+3. File changed : docker-compose.yml
+```
+environment:
+      - API_URL=http://api.${APP_DOMAIN:-app.localhost}
+      - APP_VERSION=canary
+      - APP_RELEASE=v2
+      - FEATURE_BANNER=true
+```
+### Commands ran
+```
+curl -s http://127.0.0.1/config.json
+bash check_canary_split.sh app.localhost 300
+```
+### Results:
+Sampling 300 requests against host 'app.localhost' via http://127.0.0.1/
+stable:  150
+canary:  150
+unknown: 0
+failed:  0
+observed split (successes only): stable=50.00% canary=50.00%
 

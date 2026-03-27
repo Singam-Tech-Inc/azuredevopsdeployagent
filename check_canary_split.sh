@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-host="${1:-app.localhost}"
+host="${1:-localhost}"
 samples="${2:-100}"
-url="${3:-http://127.0.0.1/}"
+url="${3:-http://127.0.0.1:3000/app1/}"
 
 stable=0
 canary=0
