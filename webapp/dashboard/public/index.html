@@ -113,13 +113,28 @@
       .then(data => {
         document.getElementById('stat-services').textContent = data.items.length;
         const tbody = document.getElementById('items-body');
-        tbody.innerHTML = data.items.map((item, i) => `
-          <tr>
-            <td style="color:#718096">${i + 1}</td>
-            <td>${item.name}</td>
-            <td><span class="dot"></span>${item.status}</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = '';
+        data.items.forEach((item, i) => {
+          const tr = document.createElement('tr');
+
+          const tdIndex = document.createElement('td');
+          tdIndex.style.color = '#718096';
+          tdIndex.textContent = String(i + 1);
+          tr.appendChild(tdIndex);
+
+          const tdName = document.createElement('td');
+          tdName.textContent = item.name;
+          tr.appendChild(tdName);
+
+          const tdStatus = document.createElement('td');
+          const dotSpan = document.createElement('span');
+          dotSpan.className = 'dot';
+          tdStatus.appendChild(dotSpan);
+          tdStatus.appendChild(document.createTextNode(item.status));
+          tr.appendChild(tdStatus);
+
+          tbody.appendChild(tr);
+        });
       })
       .catch(err => {
         document.getElementById('stat-services').textContent = 'err';
