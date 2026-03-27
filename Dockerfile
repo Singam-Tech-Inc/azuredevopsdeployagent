@@ -32,7 +32,7 @@ RUN set -e; \
         esac; \
         mkdir -p /opt/agent; \
         cd /opt/agent; \
-        curl -fkSL -o vstsagent.tar.gz "https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agent-linux-${AGENT_ARCH}-${AGENT_VERSION}.tar.gz"; \
+        curl -fSL -o vstsagent.tar.gz "https://download.agent.dev.azure.com/agent/${AGENT_VERSION}/vsts-agent-linux-${AGENT_ARCH}-${AGENT_VERSION}.tar.gz"; \
         tar -zxvf vstsagent.tar.gz; \
         rm vstsagent.tar.gz
 
