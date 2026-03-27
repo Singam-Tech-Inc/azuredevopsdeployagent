@@ -221,3 +221,5 @@ unknown: 0
 failed:  0
 observed split (successes only): stable=50.00% canary=50.00%
 
+# Mar 26, 2026
+## Route the apps using PATH based routing in Traefik

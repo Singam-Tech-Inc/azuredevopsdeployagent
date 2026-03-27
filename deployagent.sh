@@ -18,6 +18,11 @@ fi
 # Ensure the non-root runtime user can access persisted files.
 chown -R agent:agent "$AGENT_DIR"
 
+# Optional secret-file support for production deployments.
+if [ -z "${AZP_TOKEN:-}" ] && [ -n "${AZP_TOKEN_FILE:-}" ]; then
+  AZP_TOKEN="$(cat "$AZP_TOKEN_FILE")"
+fi
+
 # Required environment variables
 : "${AZP_URL:?AZP_URL is required (e.g. https://dev.azure.com/yourOrg)}"
 : "${AZP_TOKEN:?AZP_TOKEN is required (your PAT)}"

@@ -67,7 +67,7 @@ detect_host_arch() {
 build_arch() {
   local arch="$1"
   echo "==> Building ${IMAGE_REPO}:${VERSION}-${arch}"
-  TARGETARCH="$arch" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" docker compose build
+  TARGETARCH="$arch" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" docker compose build azdevops-agent
 }
 
 push_arch() {
@@ -99,6 +99,6 @@ if ! docker image inspect "$HOST_TAG" >/dev/null 2>&1; then
 fi
 
 echo "==> Starting compose with ${HOST_TAG}"
-TARGETARCH="$HOST_ARCH" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" docker compose up -d
+TARGETARCH="$HOST_ARCH" VERSION="$VERSION" IMAGE_REPO="$IMAGE_REPO" docker compose --profile agent up -d azdevops-agent
 
 echo "==> Done"
